@@ -11,7 +11,7 @@ def parse_timestamp(file_name):
     return int(os.path.basename(file_name).split('.')[0])
 
 class TUMVisualInertialDataset(Dataset):
-    def __init__(self, path='./folder_path', sequence_length=5, skip_frames=10):
+    def __init__(self, path, sequence_length=5, skip_frames=10):
         self.path = path
         self.sequence_length = sequence_length
 
@@ -41,9 +41,9 @@ class TUMVisualInertialDataset(Dataset):
 
         self.distortion_coef = np.array([0.0034823894022493434, 0.0007150348452162257, -0.0020532361418706202, 0.00020293673591811182])
         
-        image_shape = np.array([512, 512])
+        self.image_shape = np.array([512, 512])
         
-        self.K, self.roi = cv2.getOptimalNewCameraMatrix(self.K_distorted, self.distortion_coef, image_shape, 1, image_shape)
+        self.K, self.roi = cv2.getOptimalNewCameraMatrix(self.K_distorted, self.distortion_coef, self.image_shape, 0, self.image_shape)
 
     def __len__(self):
         return len(self.cam0_images) - self.sequence_length + 1
@@ -70,14 +70,26 @@ class TUMVisualInertialDataset(Dataset):
 
             # Load the images and undistort
             img0 = cv2.imread(cam0_img_path)
+            img0= cv2.cvtColor(img0, cv2.COLOR_BGR2RGB) / 255.0
             img0 = cv2.undistort(img0, self.K_distorted, self.distortion_coef, None, self.K)
             img1 = cv2.imread(cam1_img_path)
+            img1= cv2.cvtColor(img1, cv2.COLOR_BGR2RGB) / 255.0
             img1 = cv2.undistort(img1, self.K_distorted, self.distortion_coef, None, self.K)
 
             # Crop after undistortion
             x, y, w, h = self.roi
             img0  = img0[y:y+h, x:x+w]
-            img1  = img1[y:y+h, x:x+w]            
+            img1  = img1[y:y+h, x:x+w]
+
+            # Transform for DepthAnything and adjust K.
+            # img0 = self.transforms({'image': img0})['image']
+            # img1 = self.transforms({'image': img1})['image']
+            # scale_x = self.image_shape[0] / img0.shape[0]
+            # scale_y = self.image_shape[1] / img1.shape[1]
+            # self.K[0,0] *= scale_x
+            # self.K[0,-1] *= scale_x
+            # self.K[1,1] *= scale_y
+            # self.K[1,0-1] *= scale_y
 
             cam0_frames.append(img0)
             cam1_frames.append(img1)
@@ -87,12 +99,20 @@ class TUMVisualInertialDataset(Dataset):
             gt_poses.append(self.ground_truth[gt_ind, 1:])
 
         # Convert everything to PyTorch tensors
-        cam0_frames = torch.stack([torch.tensor(frame) for frame in cam0_frames])
-        cam1_frames = torch.stack([torch.tensor(frame) for frame in cam1_frames])
-        dt = torch.tensor(imu_readings[:, 0])
-        gyro = torch.tensor(imu_readings[:, [1,2,3]])
-        acc = torch.tensor(imu_readings[:, [4,5,6]])
-        gt_poses = pp.SE3(np.vstack(gt_poses))
+        cam0_frames = np.stack([frame for frame in cam0_frames])
+        cam1_frames = np.stack([frame for frame in cam1_frames])
+        dt = np.array(imu_readings[:, 0])
+        gyro = np.array(imu_readings[:, [1,2,3]])
+        acc = np.array(imu_readings[:, [4,5,6]])
+        gt_poses = np.array(np.vstack(gt_poses))
+
+        # # Convert everything to PyTorch tensors
+        # cam0_frames = torch.stack([torch.tensor(frame) for frame in cam0_frames])
+        # cam1_frames = torch.stack([torch.tensor(frame) for frame in cam1_frames])
+        # dt = torch.tensor(imu_readings[:, 0])
+        # gyro = torch.tensor(imu_readings[:, [1,2,3]])
+        # acc = torch.tensor(imu_readings[:, [4,5,6]])
+        # gt_poses = pp.SE3(np.vstack(gt_poses))
 
         return {
             'cam0': cam0_frames,
