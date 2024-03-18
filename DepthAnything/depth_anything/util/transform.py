@@ -164,18 +164,46 @@ class Resize(object):
             raise ValueError(f"resize_method {self.__resize_method} not implemented")
 
         return (new_width, new_height)
+    
+    def resize_image(self, input_image, new_width, new_height):
+        # Get the dimensions of the original image
+        original_height, original_width = input_image.shape[:2]
+
+        # Create a new empty array for the resized image
+        resized_image = np.zeros((new_height, new_width, input_image.shape[2]), dtype=input_image.dtype)
+
+        # Calculate the scale factors
+        x_scale = original_width / new_width
+        y_scale = original_height / new_height
+
+        for i in range(new_height):
+            for j in range(new_width):
+                # Find the nearest neighbors in the original image
+                nearest_x = int(j * x_scale)
+                nearest_y = int(i * y_scale)
+
+                # Clip to the bounds of the original image to avoid indexing errors
+                nearest_x = min(original_width - 1, max(0, nearest_x))
+                nearest_y = min(original_height - 1, max(0, nearest_y))
+
+                # Copy the pixel value from the nearest neighbor
+                resized_image[i, j, :] = input_image[nearest_y, nearest_x, :]
+
+        return resized_image
 
     def __call__(self, sample):
         width, height = self.get_size(
             sample["image"].shape[1], sample["image"].shape[0]
         )
 
-        # resize sample
+        print(sample['image'].shape, (width, height))
+        #resize sample
         sample["image"] = cv2.resize(
             sample["image"],
             (width, height),
             interpolation=self.__image_interpolation_method,
         )
+        #sample['image'] = self.resize_image(sample['image'], width, height)
 
         if self.__resize_target:
             if "disparity" in sample:
@@ -191,9 +219,9 @@ class Resize(object):
                 )
 
             if "semseg_mask" in sample:
-                # sample["semseg_mask"] = cv2.resize(
-                #     sample["semseg_mask"], (width, height), interpolation=cv2.INTER_NEAREST
-                # )
+                sample["semseg_mask"] = cv2.resize(
+                    sample["semseg_mask"], (width, height), interpolation=cv2.INTER_NEAREST
+                )
                 sample["semseg_mask"] = F.interpolate(torch.from_numpy(sample["semseg_mask"]).float()[None, None, ...], (height, width), mode='nearest').numpy()[0, 0]
                 
             if "mask" in sample:

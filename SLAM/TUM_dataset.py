@@ -11,9 +11,10 @@ def parse_timestamp(file_name):
     return int(os.path.basename(file_name).split('.')[0])
 
 class TUMVisualInertialDataset(Dataset):
-    def __init__(self, path, sequence_length=5, skip_frames=10):
+    def __init__(self, path, transforms, sequence_length=5, skip_frames=10):
         self.path = path
         self.sequence_length = sequence_length
+        self.transforms = transforms
 
         # Load image paths
         self.cam0_images = sorted([os.path.join(path, 'cam0/images', f) for f in os.listdir(os.path.join(path, 'cam0/images')) if f.endswith('.png')])[::skip_frames]
@@ -70,26 +71,43 @@ class TUMVisualInertialDataset(Dataset):
 
             # Load the images and undistort
             img0 = cv2.imread(cam0_img_path)
-            img0= cv2.cvtColor(img0, cv2.COLOR_BGR2RGB) / 255.0
+            print(img0.shape)
             img0 = cv2.undistort(img0, self.K_distorted, self.distortion_coef, None, self.K)
+            print(img0.shape)
             img1 = cv2.imread(cam1_img_path)
-            img1= cv2.cvtColor(img1, cv2.COLOR_BGR2RGB) / 255.0
             img1 = cv2.undistort(img1, self.K_distorted, self.distortion_coef, None, self.K)
 
             # Crop after undistortion
             x, y, w, h = self.roi
+            print(x, y, w, h)
             img0  = img0[y:y+h, x:x+w]
             img1  = img1[y:y+h, x:x+w]
 
+            print(img0.shape)
             # Transform for DepthAnything and adjust K.
-            # img0 = self.transforms({'image': img0})['image']
-            # img1 = self.transforms({'image': img1})['image']
-            # scale_x = self.image_shape[0] / img0.shape[0]
-            # scale_y = self.image_shape[1] / img1.shape[1]
-            # self.K[0,0] *= scale_x
-            # self.K[0,-1] *= scale_x
-            # self.K[1,1] *= scale_y
-            # self.K[1,0-1] *= scale_y
+            #img0 = self.transforms({'image': img0})['image']
+            #img1 = self.transforms({'image': img1})['image']
+            img0 = cv2.resize(
+                img0,
+                (518, 518),
+                interpolation=cv2.INTER_LANCZOS4,
+                )
+            img1 = cv2.resize(
+                img1,
+                (518, 518),
+                interpolation=cv2.INTER_LANCZOS4,
+                )
+            print(img0.shape)
+
+            scale_x = self.image_shape[0] / img0.shape[0]
+            scale_y = self.image_shape[1] / img0.shape[1]
+            self.K[0,0] *= scale_x
+            self.K[0,-1] *= scale_x
+            self.K[1,1] *= scale_y
+            self.K[1,-1] *= scale_y
+
+            img0= cv2.cvtColor(img0, cv2.COLOR_BGR2RGB) / 255.0
+            img1= cv2.cvtColor(img1, cv2.COLOR_BGR2RGB) / 255.0
 
             cam0_frames.append(img0)
             cam1_frames.append(img1)
@@ -99,20 +117,20 @@ class TUMVisualInertialDataset(Dataset):
             gt_poses.append(self.ground_truth[gt_ind, 1:])
 
         # Convert everything to PyTorch tensors
-        cam0_frames = np.stack([frame for frame in cam0_frames])
-        cam1_frames = np.stack([frame for frame in cam1_frames])
-        dt = np.array(imu_readings[:, 0])
-        gyro = np.array(imu_readings[:, [1,2,3]])
-        acc = np.array(imu_readings[:, [4,5,6]])
-        gt_poses = np.array(np.vstack(gt_poses))
+        # cam0_frames = np.stack(cam0_frames)
+        # cam1_frames = np.stack(cam1_frames)
+        # dt = np.array(imu_readings[:, 0])
+        # gyro = np.array(imu_readings[:, [1,2,3]])
+        # acc = np.array(imu_readings[:, [4,5,6]])
+        # gt_poses = np.array(np.vstack(gt_poses))
 
-        # # Convert everything to PyTorch tensors
-        # cam0_frames = torch.stack([torch.tensor(frame) for frame in cam0_frames])
-        # cam1_frames = torch.stack([torch.tensor(frame) for frame in cam1_frames])
-        # dt = torch.tensor(imu_readings[:, 0])
-        # gyro = torch.tensor(imu_readings[:, [1,2,3]])
-        # acc = torch.tensor(imu_readings[:, [4,5,6]])
-        # gt_poses = pp.SE3(np.vstack(gt_poses))
+        # Convert everything to PyTorch tensors
+        cam0_frames = torch.stack([torch.tensor(frame) for frame in cam0_frames]).float()
+        cam1_frames = torch.stack([torch.tensor(frame) for frame in cam1_frames]).float()
+        dt = torch.tensor(imu_readings[:, 0])
+        gyro = torch.tensor(imu_readings[:, [1,2,3]])
+        acc = torch.tensor(imu_readings[:, [4,5,6]])
+        gt_poses = pp.SE3(np.vstack(gt_poses))
 
         return {
             'cam0': cam0_frames,

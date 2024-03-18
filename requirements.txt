@@ -1,6 +1,19 @@
+# Standard PyPI packages
+diffusers
 opencv-python
 matplotlib
-kornia>=0.6.11
 pypose
 ipykernel
 scipy
+numpy
+pillow
+transformers
+jupyter
+ipywidgets
+accelerate
+
+# Packages from a different index
+--find-links https://download.pytorch.org/whl/cu118
+torch
+torchvision
+torchaudio
