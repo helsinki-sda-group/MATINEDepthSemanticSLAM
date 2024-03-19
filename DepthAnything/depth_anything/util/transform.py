@@ -196,7 +196,6 @@ class Resize(object):
             sample["image"].shape[1], sample["image"].shape[0]
         )
 
-        print(sample['image'].shape, (width, height))
         #resize sample
         sample["image"] = cv2.resize(
             sample["image"],
