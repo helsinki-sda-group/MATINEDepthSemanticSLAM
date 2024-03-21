@@ -10,11 +10,13 @@ def parse_timestamp(file_name):
     # Assumes the file name is the timestamp
     return int(os.path.basename(file_name).split('.')[0])
 
-class TUMVisualInertialDataset(Dataset):
+class UZH_FPV_Dataset(Dataset):
     def __init__(self, path, transforms, sequence_length=5, skip_frames=10):
         self.path = path
         self.sequence_length = sequence_length
         self.transforms = transforms
+
+        # Rename images to times.
 
         # Load image paths
         self.cam0_images = sorted([os.path.join(path, 'cam0/images', f) for f in os.listdir(os.path.join(path, 'cam0/images')) if f.endswith('.png')])[200:][::skip_frames]
