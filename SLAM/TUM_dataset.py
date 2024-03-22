@@ -17,8 +17,8 @@ class TUMVisualInertialDataset(Dataset):
         self.transforms = transforms
 
         # Load image paths
-        self.cam0_images = sorted([os.path.join(path, 'cam0/images', f) for f in os.listdir(os.path.join(path, 'cam0/images')) if f.endswith('.png')])[200:][::skip_frames]
-        self.cam1_images = sorted([os.path.join(path, 'cam1/images', f) for f in os.listdir(os.path.join(path, 'cam1/images')) if f.endswith('.png')])[200:][::skip_frames]
+        self.cam0_images = sorted([os.path.join(path, 'cam0/images', f) for f in os.listdir(os.path.join(path, 'cam0/images')) if f.endswith('.png')])[::skip_frames]
+        self.cam1_images = sorted([os.path.join(path, 'cam1/images', f) for f in os.listdir(os.path.join(path, 'cam1/images')) if f.endswith('.png')])[::skip_frames]
 
         # Load IMU and ground truth data
         self.imu_data = np.loadtxt(os.path.join(path, 'imu.txt'), comments='#', delimiter=' ')
