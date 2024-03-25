@@ -106,12 +106,12 @@ class UZH_FPV_Dataset(Dataset):
 
 
         # Gather all IMU readings between these two timestamps.
-        imu_start = np.searchsorted(self.imu_data[:, 0], start_timestamp)
-        imu_end = np.searchsorted(self.imu_data[:, 0], end_timestamp)
+        imu_start = np.searchsorted(self.imu_data[:, 0], start_timestamp) - 1
+        imu_end = np.searchsorted(self.imu_data[:, 0], end_timestamp) - 1
         imu_readings = self.imu_data[imu_start:imu_end]
 
         # Get velocity at the start of the sequence.
-        velocity_index = np.searchsorted(self.velocities[:,0], start_timestamp)
+        velocity_index = np.searchsorted(self.velocities[:,0], start_timestamp) - 1
         velocity = self.velocities[velocity_index, 1:]
 
         # Handle ground truth poses for each image
@@ -130,7 +130,7 @@ class UZH_FPV_Dataset(Dataset):
             cam0_frames.append(img0)
 
             # Find the nearest ground truth pose
-            gt_ind = np.searchsorted(self.ground_truth[:, 0], self.image_times[img_idx])
+            gt_ind = np.searchsorted(self.ground_truth[:, 0], self.image_times[img_idx]) - 1
             gt_poses.append(self.ground_truth[gt_ind, 1:])
 
         # Convert everything to PyTorch tensors
