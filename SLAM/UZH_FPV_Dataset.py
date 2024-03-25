@@ -27,14 +27,14 @@ class UZH_FPV_Dataset(Dataset):
         self.imu_data = np.loadtxt(os.path.join(path, 'imu.txt'), comments='#', delimiter=' ')[:, 1:]
         self.ground_truth = np.loadtxt(os.path.join(path, 'groundtruth.txt'), comments='#', delimiter=' ')
 
-        self.T_cam_imu = pp.mat2SE3(torch.tensor([
-            [-0.011823057800830705, -0.9998701444077991, -0.010950325390841398, -0.057904961033265645],
-            [0.011552991631909482, 0.01081376681432078, -0.9998747875767439, 0.00043766687615362694],
-            [0.9998633625093938, -0.011948086424720228, 0.011423639621249038, -0.00039944945687402214],
-            [0.0, 0.0, 0.0, 1.0]
-        ]))
-
-        self.ground_truth[:, 1:] = (self.T_cam_imu.Inv() @ pp.SE3(self.ground_truth[:,1:])).tensor().numpy()
+        # Messes up the integration big time.
+        # self.T_cam_imu = pp.mat2SE3(torch.tensor([
+        #     [-0.011823057800830705, -0.9998701444077991, -0.010950325390841398, -0.057904961033265645],
+        #     [0.011552991631909482, 0.01081376681432078, -0.9998747875767439, 0.00043766687615362694],
+        #     [0.9998633625093938, -0.011948086424720228, 0.011423639621249038, -0.00039944945687402214],
+        #     [0.0, 0.0, 0.0, 1.0]
+        # ]))
+        # self.ground_truth[:, 1:] = (self.T_cam_imu.Inv() @ pp.SE3(self.ground_truth[:,1:])).tensor().numpy()
 
         self.velocities = self.get_velocities(self.ground_truth[:,0], pp.SE3(self.ground_truth[:,1:]))
         
@@ -136,11 +136,12 @@ class UZH_FPV_Dataset(Dataset):
         # Convert everything to PyTorch tensors
         cam0_frames = torch.stack([torch.tensor(frame) for frame in cam0_frames]).float().permute(0,3,1,2)
         t = torch.tensor(imu_readings[:, 0]) # Should be in seconds
-        dt = torch.diff(t, append=t[-2:-1]).unsqueeze(1).float()
+        dt = t[1:] - t[:-1] 
+        dt = torch.cat([dt, dt[-2:-1]]).unsqueeze(1).float()
         gyro = torch.tensor(imu_readings[:, [1,2,3]]).float()
         acc = torch.tensor(imu_readings[:, [4,5,6]]).float()
         velocity = torch.tensor(velocity).float()
-        gt_poses = pp.SE3(np.vstack(gt_poses)) # Might need @ self.T_cam0_imu
+        gt_poses = pp.SE3(torch.tensor(np.vstack(gt_poses)).float())
 
         return {
             'cam0': cam0_frames,
