@@ -1,14 +1,8 @@
 # MATINEDepthSemanticSLAM
 
-Project to combine SLAM with semantic segmentation, instance tracking, and scale estimation.
+Deep Learning Based Sparse SLAM
 
-### Install Requirements (conda)
+### Install with Conda
 ~~~
-conda create --name matine python=3.10
-conda activate matine
-pip install -r dinov2/requirements.txt -r dinov2/requirements-extras.txt -r requirements.txt
+conda env create -f environment.yaml
 ~~~
-
-*NOTE: Known problem with mmcv and mmsegmentation dependencies. Segmentation notebook does not work currently.
-
-https://github.com/facebookresearch/dinov2/issues/196
